@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>JVM 笔记（理论篇） | DevelopInfo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="JVM笔记（理论篇）[TOC] 本笔记主要是记录Java虚拟机中的一些知识要点，并尽力阐述清楚各个知识点之间的联系。对于每一个Java类，Java编译器首先将其编译成对应的Class文件；在运行程序阶段，Java虚拟机会加载Class文件中的数据进行运行；在程序运行过程中，Java虚拟机会对实例对象进行内存分配以及垃圾回收。因此本文将主要介绍：Class文件结构，类加载机制，以及垃圾回收与内存分配">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM 笔记（理论篇）">
+<meta property="og:url" content="http://yoursite.com/2019/09/15/JVM笔记（理论篇）/index.html">
+<meta property="og:site_name" content="DevelopInfo">
+<meta property="og:description" content="JVM笔记（理论篇）[TOC] 本笔记主要是记录Java虚拟机中的一些知识要点，并尽力阐述清楚各个知识点之间的联系。对于每一个Java类，Java编译器首先将其编译成对应的Class文件；在运行程序阶段，Java虚拟机会加载Class文件中的数据进行运行；在程序运行过程中，Java虚拟机会对实例对象进行内存分配以及垃圾回收。因此本文将主要介绍：Class文件结构，类加载机制，以及垃圾回收与内存分配">
+<meta property="og:locale" content="zh">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/classLife.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/parentsDelegationModel.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/javaArea.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/jvmStack.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/handlePoint.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/directPoint.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/gcRoot.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/markSweep.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/markCompact.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/copying.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/gcs.jpg">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/serialOld.jpg">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/parallelOld.jpg">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/cms.jpg">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/HotspotHeapStructure.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/G1HeapAllocation.png">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/g1.jpg">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/handlePromotion.png">
+<meta property="og:updated_time" content="2019-09-15T12:50:00.453Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="JVM 笔记（理论篇）">
+<meta name="twitter:description" content="JVM笔记（理论篇）[TOC] 本笔记主要是记录Java虚拟机中的一些知识要点，并尽力阐述清楚各个知识点之间的联系。对于每一个Java类，Java编译器首先将其编译成对应的Class文件；在运行程序阶段，Java虚拟机会加载Class文件中的数据进行运行；在程序运行过程中，Java虚拟机会对实例对象进行内存分配以及垃圾回收。因此本文将主要介绍：Class文件结构，类加载机制，以及垃圾回收与内存分配">
+<meta name="twitter:image" content="http://zhoujianbo.gitee.io/notes/pics/JVM/classLife.png">
+  
+    <link rel="alternate" href="/atom.xml" title="DevelopInfo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">DevelopInfo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-JVM笔记（理论篇）" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/09/15/JVM笔记（理论篇）/" class="article-date">
+  <time datetime="2019-09-15T12:43:26.885Z" itemprop="datePublished">2019-09-15</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      JVM 笔记（理论篇）
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="JVM笔记（理论篇）"><a href="#JVM笔记（理论篇）" class="headerlink" title="JVM笔记（理论篇）"></a>JVM笔记（理论篇）</h1><p>[TOC]</p>
+<p>本笔记主要是记录Java虚拟机中的一些知识要点，并尽力阐述清楚各个知识点之间的联系。对于每一个Java类，Java编译器首先将其编译成对应的Class文件；在运行程序阶段，Java虚拟机会加载Class文件中的数据进行运行；在程序运行过程中，Java虚拟机会对实例对象进行内存分配以及垃圾回收。因此本文将主要介绍：<strong>Class文件结构，类加载机制，以及垃圾回收与内存分配机制。</strong></p>
+<h2 id="1-Class文件结构"><a href="#1-Class文件结构" class="headerlink" title="1. Class文件结构"></a>1. Class文件结构</h2><p>一个java类会被Java编译器编译成一个Class文件，打开Class文件会发现是二进制文件，那每个二进制位表示什么含义呢？本节将介绍Class文件的结构。Class文件是一组以字节（8bit）为基础单位的二进制文件，各个数据项目严格按照顺序排列，形成Class文件。每个数据项目都有其数据类型，决定了该数据项目所占的字节数量。数据项目共有两个数据类型：<strong>无符号数和表</strong>，例如：数据类型u2表示一个占用2个字节的数据项目，数据项目表示一个无符号数；数据类型cp_info表示一个常量池表类型的数据项目，数据项目表示一个常量池表，cp_info表相当于一个结构体，在表中定义了其他属性。Class文件是一个将固定的数据项目按照固定的顺序排列的二进制文件，文件结构如下表所示：</p>
+<center>表：Class文件结构/格式</center>
+
+<table>
+<thead>
+<tr>
+<th>数据类型</th>
+<th>数据项目/名称</th>
+<th>数量</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>u4</td>
+<td>magic</td>
+<td>1</td>
+<td>魔数，它的唯一作用就是告诉虚拟机是否是一个Class文件。</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>minor_version</td>
+<td>1</td>
+<td>次版本号</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>major_version</td>
+<td>1</td>
+<td>主版本号</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>constant_pool_count</td>
+<td>1</td>
+<td>常量池大小</td>
+</tr>
+<tr>
+<td>cp_info</td>
+<td>constant_pool</td>
+<td>constant_pool_count-1</td>
+<td>常量池，里面存储着<strong>字面量</strong>和<strong>符号引用</strong>。（稍后解释）</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>access_flags</td>
+<td>1</td>
+<td>访问标志，用于识别类或接口层次的一些修饰信息。</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>this_class</td>
+<td>1</td>
+<td>类索引，存储的地址指向该类在常量池中所对应的<strong>类型为CONSTANT_CLASS_INFO的类描述符常量</strong>。</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>super_class</td>
+<td>1</td>
+<td>继承的父类索引，存储的地址指向父类在常量池中所对应的<strong>类型为CONSTANT_CLASS_INFO的类描述符常量</strong>。</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>interfaces_count</td>
+<td>1</td>
+<td>实现的接口数量</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>interfaces</td>
+<td>interfaces_count</td>
+<td>接口索引，存储的地址指向实现的接口在常量池中所对应的常量。</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>fields_count</td>
+<td>1</td>
+<td>字段数量</td>
+</tr>
+<tr>
+<td>field_info</td>
+<td>fields</td>
+<td>fields_count</td>
+<td>字段表</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>methods_count</td>
+<td>1</td>
+<td>方法数量</td>
+</tr>
+<tr>
+<td>method_info</td>
+<td>method2</td>
+<td>methods_count</td>
+<td>方法表</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>attributes_count</td>
+<td>1</td>
+<td>属性数量</td>
+</tr>
+<tr>
+<td>attribute_info</td>
+<td>attributes</td>
+<td>attributes_count</td>
+<td>属性表</td>
+</tr>
+</tbody></table>
+<p>第一项<strong>魔数</strong>，它的唯一作用就是告诉虚拟机是否是一个Class文件。</p>
+<p>第二项<strong>次版本及主版本号</strong>，存储着jdk的主次版本号，JDK1.0的主版本号是45，其他版本号在此基础上+1，例如，jdk1.7主版本号为51。</p>
+<p>第三项<strong>常量池大小及常量池</strong>，常量池大小存储着常量池中常量的数量，即cp_info类型数据项目的数量。常量池中主要存放两大类常量：<strong>字面量（Literal）和符号引用（Symbolic References）。</strong>字面量是指Java语言中的常量，例如：文本字符串、声明为final的常量值等。符号引用包括三类常量：类和接口的全限定名（例如：java.lang.Object）、字段的名称（例如：a）和描述符（例如：int）、方法的名称和描述符。在JDK1.7之后，常量池共包含17中数据类型的常量，每个数据类型的结构都不一样。</p>
+<p>第四项<strong>访问标志</strong>，用于识别类或接口层次的一些修饰信息。例如：这个Class是类还是接口；如否定义为public类型；是否定义为abstract类型等。</p>
+<p>第五项<strong>类索引、父类索引与接口集合</strong>，类索引存储的地址指向该类在常量池中所对应的<strong>类型为CONSTANT_CLASS_INFO的类描述符常量</strong>；继承的父类索引，存储的地址指向父类在常量池中所对应的<strong>类型为CONSTANT_CLASS_INFO的类描述符常量</strong>；接口集合包含接口的数量和多个实现的接口索引。</p>
+<p>第六项<strong>字段表集合</strong>，字段表集合包括字段数量和多个字段表。<strong>字段表（field_info）</strong>用于描述接口或类中声明的变量，字段（field）包括类级变量（例如：public static int a = 0；那么a属于类级变量）和实例级变量（例如：public int o = 1; 那么o属于实例级变量），不包括在方法内部声明的局部变量。那么，一个字段如何描述呢？字段应该包含从4个层面描述：第一，字段修饰符（例如：public or private, static or not, final or not, volatile or not, transient or not）；第二，字段数据类型（基本类型，引用类型还是数组）；第三，字段名称；第四，额外的属性信息。第一个层次的信息可以利用标志位进行标记；而第二第三层信息存在信息不固定的特点，则可以引用常量池中的常量进行描述；同时，字段可能会产生一些额外信息（例如，final static int m=123;那就会存在一项名为ConstantValue的属性），则可以利用属性表进行描述。因此字段表的结构如下表所示：</p>
+<center>表：字段表结构</center>
+
+<table>
+<thead>
+<tr>
+<th align="center">数据类型</th>
+<th align="center">数据项目/名称</th>
+<th align="center">数量</th>
+<th align="center">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">u2</td>
+<td align="center">access_flags</td>
+<td align="center">1</td>
+<td align="center">修饰符标记</td>
+</tr>
+<tr>
+<td align="center">u2</td>
+<td align="center">name_index</td>
+<td align="center">1</td>
+<td align="center">字段名称的索引</td>
+</tr>
+<tr>
+<td align="center">u2</td>
+<td align="center">descriptor_index</td>
+<td align="center">1</td>
+<td align="center">字段描述符的索引</td>
+</tr>
+<tr>
+<td align="center">u2</td>
+<td align="center">attributes_count</td>
+<td align="center">1</td>
+<td align="center">属性的数量</td>
+</tr>
+<tr>
+<td align="center">attribute_info</td>
+<td align="center">attributes</td>
+<td align="center">attributes_count</td>
+<td align="center">属性信息</td>
+</tr>
+</tbody></table>
+<p>第七项<strong>方法表集合</strong>，方法表集合包括方法数量和多个方法表。方法表用以描述类中各个方法的信息，方法的描述类似字段的描述，因此方法表的结构与字段表的结构相同。</p>
+<p>第八项<strong>属性表集合</strong>，属性集合包括属性数量和多个属性表，用以描述一些额外信息。属性集合在Class文件、字段表和方法表中都可以携带。在java虚拟机规范中预定了21个属性，例如：存在于方法表中的Code属性，存在于字段表中的ConstantValue属性，使用在类文件中的InnerClasses属性。对于每个属性，可以通过属性名和属性值来描述，属性名可以引用常量池中的常量来表示，属性值可以利用属性值长度和自定义的属性值结构来表示，因此属性表的结构如下表所示：</p>
+<center>表：属性表结构</center>
+
+<table>
+<thead>
+<tr>
+<th align="center">数据类型</th>
+<th align="center">数据项目/名称</th>
+<th align="center">数量</th>
+<th align="center">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">u2</td>
+<td align="center">attribute_name_index</td>
+<td align="center">1</td>
+<td align="center">属性名称的索引</td>
+</tr>
+<tr>
+<td align="center">u4</td>
+<td align="center">attribute_length</td>
+<td align="center">1</td>
+<td align="center">属性值的长度</td>
+</tr>
+<tr>
+<td align="center">u1</td>
+<td align="center">info</td>
+<td align="center">attribute_length</td>
+<td align="center">属性值</td>
+</tr>
+</tbody></table>
+<p>例如，Code属性表的结构如下表所示：</p>
+<center>表：Code属性表结构</center>
+
+<table>
+<thead>
+<tr>
+<th align="left">数据类型</th>
+<th align="left">数据项目/名称</th>
+<th align="left">数量</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">u2</td>
+<td align="left">attribute_name_index</td>
+<td align="left">1</td>
+<td align="left">属性名称的索引</td>
+</tr>
+<tr>
+<td align="left">u4</td>
+<td align="left">attribute_length</td>
+<td align="left">1</td>
+<td align="left">属性值的长度</td>
+</tr>
+<tr>
+<td align="left">u2</td>
+<td align="left">max_stack</td>
+<td align="left">1</td>
+<td align="left">c操作数栈深度的最大值</td>
+</tr>
+<tr>
+<td align="left">u2</td>
+<td align="left">max_locals</td>
+<td align="left">1</td>
+<td align="left">j局部变量表所需的存储空间</td>
+</tr>
+<tr>
+<td align="left">u4</td>
+<td align="left">code_length</td>
+<td align="left">1</td>
+<td align="left">字节码长度</td>
+</tr>
+<tr>
+<td align="left">u1</td>
+<td align="left">code</td>
+<td align="left">code_length</td>
+<td align="left">用于存储字节码指令的字节流</td>
+</tr>
+<tr>
+<td align="left">u2</td>
+<td align="left">exception_tab_len</td>
+<td align="left">1</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">exception_info</td>
+<td align="left">exception_table</td>
+<td align="left">exception_tab_len</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">u2</td>
+<td align="left">attributes_count</td>
+<td align="left">1</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">attribute_info</td>
+<td align="left">attributes</td>
+<td align="left">attributes_count</td>
+<td align="left"></td>
+</tr>
+</tbody></table>
+<p>由于直接阅读Class文件的二进制流会非常繁琐，Oracle公司提供了javap工具，该工具可以对Class文件进行反编译，生成可阅读的Class文件</p>
+<h2 id="2-类加载机制"><a href="#2-类加载机制" class="headerlink" title="2. 类加载机制"></a>2. 类加载机制</h2><p>上节介绍了Class文件的结构，Class文件中的数据项目最终都需要加载到虚拟机中才能运行。而虚拟机在何时对Class文件中的数据项目进行加载？虚拟机如何加载这些Class文件？Class文件中的数据项目进入到虚拟机后会发生什么变化？本节将对其进行介绍。</p>
+<h3 id="2-1-类加载过程"><a href="#2-1-类加载过程" class="headerlink" title="2.1 类加载过程"></a>2.1 类加载过程</h3><p>类从被加载到虚拟机内存中到卸载出内存，它的整个生命周期包括：加载（Loading）、验证（Verification）、准备（Preparation）、解析（Resolution）、初始化（Initialization）、使用（Using）和卸载（Unloading）7个阶段。其中验证、准备和解析统称为连接（Linking），类的生命周期如图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/classLife.png"></center>
+
+<center>类的生命周期</center>
+
+<p>加载、验证、准备、初始化和卸载这5个阶段的<strong>开始</strong>顺序是确定的，而解析阶段有时在初始化阶段之后，这是为了java的动态绑定机制。</p>
+<p><strong>类的加载时机</strong></p>
+<p>那一个类或接口在何时进行加载呢？Java虚拟机规范没有强制规定，但对于初始化阶段（则加载、验证、准备自然要在其之前开始），虚拟机规范进行了明确规定：当一个类被<strong>主动引用</strong>时，会触发类的初始化操作（注意：<strong>初始化的是类变量，而不是实例变量</strong>）。那什么情况下会属于主动引用呢？主动引用包含5种情况：</p>
+<ol>
+<li>遇到new、getstatic、putstatic或invokestatic这4条字节码指令时，如果类没有初始化，则需要先初始化。遇到该情况最常见的场景：使用new关键字实例化一个对象；读取或设置一个静态字段（<strong>被final修饰、已在编译器吧结果放入常量池的静态字段除外</strong>）；以及调用静态方法。</li>
+<li>使用java.lang.reflect包的方法对类进行反射调用时，如果类没有初始化，则需要先初始化。</li>
+<li>初始化一个类时，如果其父类没有初始化，则需要先初始化其父类。</li>
+<li>虚拟机启动时，主类（包含main方法的类）会先初始化。</li>
+<li>（不懂）使用JDK1.7的动态语言支持时，如果一个java.lang.invoke.MethodHandle实例最后解析的结果 REF_getStatic、REF_putStatic、REF_invokeStatic 的方法句柄所对应类没有进行过初始化，则需要先初始化。</li>
+</ol>
+<p>除了主动引用的情况，其他情况下（称为被动引用）引用类，都不能够触发初始化操作。</p>
+<p><strong>类的加载过程</strong></p>
+<p>上节介绍了类的加载时机，那么虚拟机是如何加载类的呢？由于类的7个生命周期中，使用和卸载是不属于类的加载过程，本节将主要介绍加载、验证、准备、解析以及初始化过程。</p>
+<p><strong>加载</strong>，该过程虚拟机主要完成3件事情：</p>
+<ol>
+<li>通过类的限定名获取该类的二进制流。虚拟机规范没有规定利用何种方式进行获取，因此可以从ZIP包中读取；从网络中获取；在运行时生成，例如动态代理技术；…</li>
+<li>将字节流所代表的静态存储结构（个人理解为Class文件中存储的数据项目）转化为方法区的运行时数据结构。</li>
+<li>在内存中生成一个代表这个类的java.lang.Class对象（虚拟机规范并没有规定实在堆区还是方法区中，HotSpot是存放在方法区里的），作为方法区的访问入口（例如，当执行MyClass myClass = new MyClass() 程序时，虚拟机首先找到 myClass类对象，然后通过类对象访问方法区中MyClass类的元数据信息）。</li>
+</ol>
+<p>对于非数组类的加载过程，开发人员可以通过类加载器进行加载；而对于<strong>数组类</strong>，它并不通过类加载器进行创建，它是由虚拟机直接创建的，但数组中的元素（Element，指数组去掉所有维度的类型）是要靠类加载器进行创建的。类加载器将在之后进行介绍。</p>
+<p><strong>验证</strong>，该过程主要是确保Class文件中的字节流符合虚拟机规范，不会危害到虚拟机安全。例如需要进行文件格式验证、元数据验证（例如判断是否可继承等）、字节码验证（对类的方法进行校验）、符号引用验证等。</p>
+<p><strong>准备</strong>，该过程主要是为<strong>类变量</strong>（即静态变量，并非类的实例对象）设置初始值，这些变量一般都存储在方法区。</p>
+<p><strong>解析</strong>，该过程主要是将符号引用转化为直接引用。<strong>符号引用</strong>是用一组符号（任何形式的字面量）来定位目标；<strong>直接引用</strong>是用目标的地址来定位目标的。</p>
+<p><strong>初始化</strong>，之前准备阶段已经对类变量进行了一次默认初始值这只，而该过程将通过执行类中定义的程序代码来初始化类变量，即在初始化阶段将执行类构造器<code>&lt;cinit&gt;()</code>（区别于类的实例构造器<code>&lt;init&gt;()</code>），下面介绍一下<code>&lt;cinit&gt;()</code>的执行细节：</p>
+<ol>
+<li><p><code>&lt;cinit&gt;()</code>的执行顺序是静态变量和静态语句块在源文件中出现的顺序，静态语句块可以在静态变量之前对其进行赋值，但不能进行访问。如下例所示：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Test</span></span>&#123;</span><br><span class="line">	<span class="keyword">static</span> &#123;</span><br><span class="line">        i = <span class="number">0</span>; <span class="comment">//给变量进行赋值可以通过</span></span><br><span class="line">        System.out.println(i); <span class="comment">//编译器会提示“非法向前引用”</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">int</span> i = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>虚拟机会保证父类的<code>&lt;cinit&gt;()</code>方法在子类<code>&lt;cinit&gt;()</code>方法执行之前执行。这意味着父类中的静态语句会先于子类中的静态语句执行。如下例所示：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Parent</span></span>&#123;</span><br><span class="line">	<span class="keyword">public</span> <span class="keyword">static</span> init A = <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">static</span>&#123;</span><br><span class="line">		A = <span class="number">2</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Sub</span> <span class="keyword">extends</span> <span class="title">Parent</span></span>&#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> B = A;</span><br><span class="line">    </span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span></span>&#123;</span><br><span class="line">        System.out.println(B);<span class="comment">//输出2</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>如果类中没有对静态变量赋值，并且也没有静态语句块，则编译器可以不为该类生成<code>&lt;cinit&gt;()</code>方法。</p>
+</li>
+<li><p>接口与类不同，接口的<code>&lt;cinit&gt;()</code>方法执行时，不需要先执行父接口的<code>&lt;cinit&gt;()</code>方法；同时，接口的实现类在初始化时也不需要执行接口的<code>&lt;cinit&gt;()</code>方法。</p>
+</li>
+<li><p>在多线程环境下，虚拟机会保证<code>&lt;cinit&gt;()</code>方法被正确地加锁和同步。如果有多个线程同时去初始化一个类，那么只会有一个线程去执行<code>&lt;cinit&gt;()</code>方法，其他线程需要阻塞等待。</p>
+</li>
+</ol>
+<h3 id="2-2-类加载器"><a href="#2-2-类加载器" class="headerlink" title="2.2 类加载器"></a>2.2 类加载器</h3><p>在类的加载阶段，虚拟机所做的第一件事是:<strong>通过类的全限定名来获取该类的二进制字节流</strong>，如何去获取类的二进制字节流，开发人员可以利用<strong>类加载器</strong>完成这个动作。</p>
+<p><strong>注意</strong>，对于任意一个类，在虚拟机中的唯一性是由加载它的类加载器和类本身一同决定的，每个类加载器都有一个独立的类命名空间。</p>
+<p><strong>双亲委派模型</strong></p>
+<p>类加载器可以分为2种类型：一种是启动类加载器（Bootstrap ClassLoader），它虚拟机自身的一部分，由c++语言实现；另一种是由java语言实现，并且继承自抽象类java.lang.ClassLoader。从开发人员的角度，类加载器可以分为3种：</p>
+<ol>
+<li>启动类加载器（Bootstrap ClassLoader），该加载器负责加载<java_home>\lib目录中的，或者是被-Xbootclasspath参数所指定的路径中的，并且能被虚拟机识别的（如rt.jar，名字不符合的不会被加载）类库。</java_home></li>
+<li>扩展类加载器（Extension ClassLoader），该加载器负责加载<java_home>/lib目录中的，或者被java.ext.dirs系统变量所指定的路径中的类库。该加载器由sun.misc.Launcher$ExtClassLoader实现。</java_home></li>
+<li>应用类加载器（Application ClassLoader），该加载器负责加载用户类路径（ClassPath）上的类库。该加载器由sum.misc.Launcher$ApplicationClassLoader实现。如果应用程序没有自定义类加载器，一般默认类加载器就是应用类加载器。</li>
+</ol>
+<p>如有必要，开发人员可以自定义类加载器。而这4种类加载器是有一定的调用层次关系的，称为<strong>双亲委派模型</strong>，这些类加载器的调用层次关系如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/parentsDelegationModel.png"></center>
+
+<center>类加载器双亲委派模型</center>
+
+<p>双亲委派模型的工作过程是：当一个类加载器收到类加载请求时，它会将请求传递给自己的父类加载器（它们之间并非继承关系，而是组合关系），请求委派会由其父类加载器去完成，当父类加载器不能够加载到指定类时，才由子类加载器尝试进行加载。</p>
+<h2 id="3-垃圾回收与内存分配机制"><a href="#3-垃圾回收与内存分配机制" class="headerlink" title="3. 垃圾回收与内存分配机制"></a>3. 垃圾回收与内存分配机制</h2><p>上节主要介绍了类的声明周期，并介绍了类的加载过程。本节将介绍类的回收机制和内存分配机制。首先，本节将介绍Java虚拟机内存区域；接着介绍对象的创建访问；然后再介绍垃圾收集器的设计；最后介绍内存的分配与回收策略。</p>
+<h3 id="3-1-Java虚拟机内存区域"><a href="#3-1-Java虚拟机内存区域" class="headerlink" title="3.1 Java虚拟机内存区域"></a>3.1 Java虚拟机内存区域</h3><p>虚拟机在java程序运行过程当中，将内存划分为5个区域进行管理，如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/javaArea.png" width="80%/"></center>
+
+<center>Java虚拟机运行时内存区域</center>
+
+<p>其中，Java虚拟机栈、本地方法栈和程序计数器这几个区域是线程私有的，方法区和堆是线程共享的。另外<strong>直接内存</strong>不是虚拟机运行时的内存区域，但在 JDK 1.4 中新引入了 NIO 类，它可以使用 Native 函数库直接分配堆外内存，然后通过 Java 堆里的 DirectByteBuffer 对象作为这块内存的引用进行操作，这样能在一些场景中显著提高性能，因为避免了在堆内存和堆外内存来回拷贝数据。下面本节将主要介绍Java虚拟机中各个内存区域。</p>
+<p><strong>程序计数器（Program Counter Register）</strong></p>
+<p>该区域可以看作是当前线程所执行的字节码的行号指示器。它记录正在执行的虚拟机字节码指令的地址（如果正在执行的是本地方法则为空）。</p>
+<p><strong>Java虚拟机栈（VM Stack）</strong></p>
+<p>每个 Java 方法在执行的同时会创建一个栈帧用于存储局部变量表、操作数栈、常量池引用等信息。从方法调用直至执行完成的过程，对应着一个栈帧在 Java 虚拟机栈中入栈和出栈的过程。虚拟机栈的数据结构如图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/jvmStack.png" width="80%/"></center>
+
+<center>Java虚拟机栈</center>
+
+<p>该区域可能抛出以下异常：</p>
+<ul>
+<li>当线程请求的栈深度超过最大值，会抛出 StackOverflowError 异常；</li>
+<li>栈进行动态扩展时如果无法申请到足够内存，会抛出 OutOfMemoryError 异常。</li>
+</ul>
+<p><strong>本地方法栈（Native Method Stack）</strong></p>
+<p>本地方法栈与虚拟机栈类似，区别在于虚拟机栈为虚拟机执行java方法（字节码）服务，而本地方法栈则为虚拟机执行Native方法（一般是用C/C++等语言编写的，并编译为系统调用程序）服务。</p>
+<p>由于虚拟机规范没有明确对本地方法栈中的语言和数据结构进行强制规定，从而使得一些虚拟机（Sun Hotspot）直接把本地方法栈与虚拟机栈合二为一。</p>
+<p>该区域也会抛出StackOverflowError和OutOfMemoryError异常。</p>
+<p><strong>方法区</strong></p>
+<p>方法区用于存储类的元数据信息，即Class文件中的数据项目，例如：类索引、字段、方法、属性等信息。</p>
+<p>虚拟机规范规定当方法区无法满足内存分配需求时，将抛出OutOfMemoryError异常。</p>
+<p><strong>运行时常量池</strong>作为方法区的一部分，主要存放Class文件当中的常量池部分的运行时数据，运行时常量池相对于Class文件常量池的区别主要是：它不仅会保存Class文件中的符号引用，还会存储转换后的直接引用；同时具备动态性，即常量可以再运行期间载入到该区域。</p>
+<p>当常量池无法再申请到内存时，虚拟机将会抛出OutOfMemoryError异常。</p>
+<p><strong>堆区</strong></p>
+<p>堆区主要是用于存储类的实例对象，也是垃圾手机的主要区域（GC堆）。</p>
+<p>当堆内存无法再扩展时，虚拟机将会抛出OutOfMemoryError异常。</p>
+<h3 id="3-2-对象的创建与访问"><a href="#3-2-对象的创建与访问" class="headerlink" title="3.2 对象的创建与访问"></a>3.2 对象的创建与访问</h3><p>上节介绍了虚拟机的运行时内存区域，上文也介绍了类的加载机制，那么一个类的对象实例时如何创建的呢？以及对象实例是如何访问的呢？本节将进行介绍。</p>
+<p><strong>实例对象（不包括数组和Class对象）的创建</strong></p>
+<p>虚拟机遇到new指令时，<strong>首先</strong>去检查常量池中是否能够定位到该类的符号引用，如果没有定位到，则进行类加载过程，如果定位到了，则为新生对象分配内存；<strong>内存分配完成后</strong>，虚拟机需要将分配的内存空间都初始化为零值（不包括对象头）；<strong>接下来</strong>，虚拟机需要设置对象头信息，例如：对象对应的类元数据信息的地址、对象的GC分代年龄等信息；<strong>在上面工作都完成之后</strong>，Java程序开始执行<code>&lt;init&gt;</code>方法，把对象按照开发人员的意愿进行初始化，这样一个对象也就创建完成了。</p>
+<p>对象创建完成后，会形成3块数据区域：对象头（Header）、实例数据（Instance Data）和对齐填充（Padding）。<strong>对象头</strong>主要存储两部分信息：第一部分用于存储对象运行时数据，例如：哈希码（HashCode）、分代年龄、锁状态标志等；第二部分用于存储类型指针，即对象指向它所对应的类元数据的指针。<strong>实例数据</strong>是对象真正存储的有效信息，即代码中定义的各种类型的字段内容（无论是从父类继承下来的，还是子类中定义的）。<strong>对齐填充</strong>仅仅起着占位符的作用，由于HotSpot要求对象的起始位置必须是8字节的整数倍，因此就需要通过对齐填充来补全。</p>
+<p><strong>实例对象的访问</strong></p>
+<p>对象的访问方式有两种：<strong>通过句柄访问和通过直接指针访问</strong>。如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/handlePoint.png" width="80%"></center>
+
+<center>通过句柄访问对象</center>
+
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/directPoint.png" width="80%"></center>
+
+<center>通过直接指针访问对象</center>
+
+<p>其中HotSpot是通过直接指针进行对象访问的。</p>
+<h3 id="3-3-垃圾收集器"><a href="#3-3-垃圾收集器" class="headerlink" title="3.3 垃圾收集器"></a>3.3 垃圾收集器</h3><p>上节介绍了实例对象的创建与访问，本节将主要介绍垃圾收集器的相关理论，主要包括<strong>如何判断对象已“死”？如何进行垃圾收集（垃圾收集算法）？如何发起垃圾回收过程？以及垃圾收集器的种类。</strong></p>
+<p><strong>如何判断对象已“死”？</strong></p>
+<p>第一种方法<strong>利用引用计数法</strong>，对每个对象添加一个引用计数器，当对象被引用时则计数器+1，引用失效时计数器-1，当进行对象回收时将引用计数器为0的对象进行回收。</p>
+<p>这种方法存在问题，当两个对象相互引用时，会导致引用计数器永远不为0，如下例所示：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Test</span></span>&#123;</span><br><span class="line">	<span class="keyword">public</span> Object instance = <span class="keyword">null</span>;</span><br><span class="line">	</span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args0)</span></span>&#123;</span><br><span class="line">		Test a = <span class="keyword">new</span> Test(); <span class="comment">//对象a的引用计数器+1</span></span><br><span class="line">		Test b = <span class="keyword">new</span> Test(); <span class="comment">//对象b的引用计数器+1</span></span><br><span class="line">		a.instance = b; <span class="comment">//对象b的引用计数器+1</span></span><br><span class="line">		b.instance = a; <span class="comment">//对象a的引用计数器+1</span></span><br><span class="line">		a = <span class="keyword">null</span>; <span class="comment">//对象a的引用计数器-1</span></span><br><span class="line">		b = <span class="keyword">null</span>; <span class="comment">//对象b的引用计数器-1</span></span><br><span class="line">		doSomething();</span><br><span class="line">		<span class="comment">// 最后对象a和b的引用计数器都不为0，导致两个对象无法回收</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>第二种方法<strong>可达性分析算法</strong>，该算法的基本思路是构建一系列的“GC Roots”的对象作为起始点，当从这些起始点开始搜索，则可达的对象都是存活的，不可达的对象可被回收。如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/gcRoot.png" width="80%/"></center>
+
+<center>可达性分析算法判定对象是否可回收</center>
+
+<p>Java虚拟机主要是使用这种算法判断对象是否可回收。</p>
+<p>无论是通过引用计数算法判断对象的引用数量，还是通过可达性分析算法判断对象是否可达，判定对象是否可被回收都与引用有关。一个对象只有被引用和不被引用两种状态，对描述许多“食之无味，弃之可惜”的对象无能为力。因此在Java语言中提供了4种不同强度的引用里类型：</p>
+<ol>
+<li><p><strong>强引用</strong>，被强引用关联的对象不会被回收。使用 new 一个新对象的方式来创建强引用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Object obj = <span class="keyword">new</span> Object();</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>软引用</strong>，被软引用关联的对象只有在内存不够的情况下才会被回收。使用 SoftReference 类来创建软引用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Object obj = <span class="keyword">new</span> Object();</span><br><span class="line">SoftReference&lt;Object&gt; sf = <span class="keyword">new</span> SoftReference&lt;Object&gt;(obj);</span><br><span class="line">obj = <span class="keyword">null</span>;  <span class="comment">// 使对象只被软引用关联</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>弱引用</strong>，被弱引用关联的对象一定会被回收，也就是说它只能存活到下一次垃圾回收发生之前。使用 WeakReference 类来创建弱引用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Object obj = <span class="keyword">new</span> Object();</span><br><span class="line">WeakReference&lt;Object&gt; wf = <span class="keyword">new</span> weakReference&lt;Object&gt;(obj);</span><br><span class="line">obj = <span class="keyword">null</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>虚引用</strong>，又称为幽灵引用或者幻影引用，一个对象是否有虚引用的存在，不会对其生存时间造成影响，也无法通过虚引用得到一个对象。为一个对象设置虚引用的唯一目的是能在这个对象被回收时收到一个系统通知。使用 PhantomReference 来创建虚引用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Object obj = <span class="keyword">new</span> Object();</span><br><span class="line">PhantomReference&lt;Object&gt; pf = <span class="keyword">new</span> PhantomReference&lt;Object&gt;(obj,<span class="keyword">null</span>);</span><br><span class="line">obj = <span class="keyword">null</span>;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p><strong>如何进行垃圾收集（垃圾收集算法）？</strong></p>
+<p>垃圾收集算法主要包括三种：<strong>标记-清理算法、标记-整理算法以及复制算法</strong>。下面将分别介绍这几种算法的基本思路。</p>
+<p><strong>标记-清理（Mark-Sweep）算法</strong>，首先标记可回收的对象（可达性塞法），然后清理可回收对象。过程如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/markSweep.png" width="70%"></center>
+
+<center>标记-清理算法示意图</center>
+
+<p>该算法的主要不足有两个：一是标记和清理过程效率不高；二是会产生大量内存碎片，导致大对象无法分配内存。</p>
+<p><strong>标记-整理（Mark-Compact）算法</strong>，首先标记可回收的对象，然后将存活的对象向一端移动，最后将边界外的对象清理掉。过程如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/markCompact.png" width="70%"></center>
+
+<center>标记-整理算法示意图</center>
+
+<p>该算法的主要不足是需要移动大量对象，从而处理效率比较低。</p>
+<p><strong>复制（Copying）算法</strong>，该算法是将内存划分为两块，每次只用其中的一块，当要进行垃圾回收时，则将存活的对象复制到另一块内存中。过程如图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/copying.png" width="70%"></center>
+
+<center>复制算法示意图</center>
+
+<p>该算法的不足是：当对象存活率较高时，虚拟机进行复制操作效率将会降低。</p>
+<p>以上三种垃圾回收算法，各有各的优点和缺点。因此，商业虚拟机更具对象的存活周期，将内存划分为：<strong>新生代（Young Generation）和老年代（Tenured Generation）</strong>，这就是所谓的<strong>分代收集</strong>算法。新生代中的对象存活率较低，一般使用复制算法进行对象回收；老年代中的对象存活率高，一般使用“标记-清理”或者“标记-整理”算法进行对象回收。</p>
+<p><strong>如何发起垃圾回收过程？</strong></p>
+<p>在上述垃圾回收算法中都会涉及到对象标记过程，即用可达性分析算法从GC Roots节点寻找引用链的过程。个人理解，该过程主要有两个步骤：第一<strong>枚举根节点（GC Roots）</strong>，第二<strong>寻找引用链</strong>。但在这两个步骤中存在一些问题：第一，由于可以作为GC Roots的节点主要在全局性引用（例如常量或静态属性）和执行上下文（例如栈帧中的局部变量表）中，若要遍历这里面的引用来枚举根节点，需要花费大量时间；第二，在进行引用链寻找时，要求不可以在这个过程中对象的引用关系发生变化。对于第一个问题，HotSpot的实现是使用一组称为<strong>OopMap的数据结构</strong>来记录栈和寄存器中哪些位置是引用，这样就可以借助OopMap快速完成GC Roots枚举了；对于第二个问题，虚拟机在将要进行GC时，就把所有Java执行线程停顿（Sun 称这件事为<strong>“Stop The World”</strong>），这样对象的引用关系就不会在GC时发生变化了。</p>
+<p>那么在什么情况下，可以进入Stop the world来进行GC过程？上文提到OopMap是记录下栈和寄存器中的引用所在位置，而该过程实在什么情况下记录的呢？当程序指令会导致对象引用关系发生变化时，虚拟机就会进行记录，我们称这些能够导致引用关系发生变化的指令位置为<strong>“安全点（safepiont）”</strong>。也就是说，GC过程需要在线程到达安全点时才进行。</p>
+<p>对于多线程的情况，java线程并非同时到达安全点。因此，虚拟机有两种方式保证所用线程到达安全点后才进行GC过程。第一种是<strong>抢占式中断</strong>，即虚拟机强制发出中断指令，当java线程还没有到达安全点时，则让其继续运行直到到达安全点；第二种是<strong>主动式中断</strong>，即虚拟机在要进行中断时，只是设置一个中断标志，各个线程到达安全点后主动去轮询这个标志，当标志为真时则自己中断挂起。目前，抢占式中断方式已被弃用。</p>
+<p>设置安全点+主动中断的方式已经解决了如何进入GC的问题，但实际会存在用户线程处于Sleep或者Block的状态，这时候用户线程就无法响应虚拟机的中断请求，从而使得GC过程无法进行。而解决此问题，虚拟机设计团队设置了<strong>“安全区域（Safe Region）”</strong>，它是指在一段代码中，引用关系没有发生变化的区域，即两个响铃安全点之间的指令区域。那么，当虚拟机要进行GC过程时，将无视标识处于安全区域的线程。</p>
+<p><strong>垃圾收集器的种类</strong></p>
+<p>上文介绍了HotSpot是<strong>如何发起内存回收过程的</strong>，但<strong>具体的回收过程如何进行？</strong>这与虚拟机采用的GC收集器有关，下面将介绍HotSpot中有哪些垃圾收集器。</p>
+<p>垃圾收集工作主要集中在堆区，并且是基于<strong>分代收集</strong>方法，将堆区分为新生代和老年代，则对于不同的年代区域会有不同的垃圾收集器。下图显示了虚拟机包含的所有收集器以及连线表示收集器之间的可以进行搭配组合：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/gcs.jpg" width="80%/"></center>
+
+<center>HotSpot虚拟机的垃圾收集器</center>
+
+<p>下面将对这7种垃圾收集器做简单介绍。</p>
+<p><strong>Serial收集器</strong>，是一个单线程的新生代收集器，使用复制算法。它只会利用一个CPU或一条收集线程去完成垃圾收集工作，并且在垃圾收集时会将所有用户线程暂停。</p>
+<p><strong>ParNew收集器</strong>，是Serial收集器的多线程版本，除了使用多线程进行垃圾收集之外，其余行为与Serial收集器完全一样。</p>
+<p><strong>Parallel Scavenge收集器</strong>，是一个多线程的新生代收集器。它和ParNew的区别在于它的关注点与其他收集器不同。Serial、ParNew以及CMS等收集器关注的是垃圾收集时用户线程暂停的时间；而Parallel Scavenge关注的是达到一个可控制的吞吐量（Throughput）。其中吞吐量=运行用户代码时间/（运行用户代码时间+垃圾收集时间）。停顿时间越短越适合需要与用户交互的程序；而吞吐量越高可以越快的完成程序的运算任务，适合后台运算程序。个人理解，每次停顿时间越短，意味着整个程序需要多次停顿，则整体程序运行时间将增大，吞吐量将降低。</p>
+<p><strong>Serial Old收集器</strong>，是Serial收集器的老年代版本，同样是一个单线程收集器，使用“标记-整理”算法。下图显示了Serial收集器与Serial收集器搭配使用的示意图：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/serialOld.jpg"></center>
+
+<center>Serial/Serial Old收集器组合运行示意图</center>
+
+<p><strong>Parallel Old收集器</strong>，是Parallel Scavenge收集器的老年代版本，使用“标记-整理”算法。下图显示了Parallel Scavenge收集器与Parallel Old收集器组合使用的示意图：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/parallelOld.jpg"></center>
+
+<center>Parallel Scavenge/Parallel Old收集器组合运行示意图</center>
+
+<p><strong>CMS（Concurrent Mark Sweep）收集器</strong>，是一个利用“标记-清除”算法的老年代收集器。它的工作过程较为复杂，可分为以下几个阶段：</p>
+<ol>
+<li>初始标记，仅仅是标记GC Roots能关联到的下一个对象；</li>
+<li>并发标记，进行GC Roots Tracing过程（个人理解，即标记能关联到GC Roots的所有对象）；</li>
+<li>重新标记，修正在并发标记过程种用户线程继续运行而导致的引用关系变更的那部分对象；</li>
+<li>并发清理，清理掉可回收对象。</li>
+</ol>
+<p>其中，初始标记和重新标记还是Stop The World，并发标记和并发清理是与用户线程一起并发执行，而这两个过程是消耗时间最长的过程，所以CMS需要停顿的时间就很短。下图显示了CMS收集器运行的示意图：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/cms.jpg"></center>
+
+<center>Concurrent Mark Sweep收集器运行示意图</center>
+
+<p><strong>G1（Garbage-First）收集器</strong>，是在JDK1.7之后正式商用的收集器。</p>
+<p>在G1收集器出现之前，其他收集器主要是基于分代进行垃圾收集工作，如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/HotspotHeapStructure.png"></center>
+
+<center>一般收集器分代收集示意图</center>
+
+<p>以往的垃圾收集器，如CMS，使用的堆内存结构如下：</p>
+<ul>
+<li>新生代：eden space + 2个survivor</li>
+<li>老年代：old space</li>
+<li>持久代：1.8之前的perm space</li>
+<li>元空间：1.8之后的metaspace</li>
+</ul>
+<p>这些space必须是地址连续的空间。</p>
+<p>在G1算法中，采用了另外一种完全不同的方式组织堆内存，堆内存被划分为多个大小相等的内存块（Region），每个Region是逻辑连续的一段内存，结构如下：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/G1HeapAllocation.png"></center>
+
+<p>每个Region被标记了E、S、O和H，说明每个Region在运行时都充当了一种角色，其中H是以往算法中没有的，它代表Humongous，这表示这些Region存储的是巨型对象（humongous object，H-obj），当新建对象大小超过Region大小一半时，直接在新的一个或多个连续Region中分配，并标记为H。为避免可达性分析时进行全堆扫描，每个 Region 都有一个 Remembered Set，用来记录该 Region 对象的引用对象所在的 Region。</p>
+<p>G1收集器的运作大致可划分为以下几个步骤：</p>
+<ol>
+<li>初始标记</li>
+<li>并发标记</li>
+<li>最终标记：为了修正在并发标记期间因用户程序继续运作而导致标记产生变动的那一部分标记记录，虚拟机将这段时间对象变化记录在线程的 Remembered Set Logs 里面，最终标记阶段需要把 Remembered Set Logs 的数据合并到 Remembered Set 中。这阶段需要停顿线程，但是可并行执行。</li>
+<li>筛选回收：首先对各个 Region 中的回收价值和成本进行排序，根据用户所期望的 GC 停顿时间来制定回收计划。此阶段其实也可以做到与用户程序一起并发执行，但是因为只回收一部分 Region，时间是用户可控制的，而且停顿用户线程将大幅度提高收集效率。</li>
+</ol>
+<p>G1收集器的工作过程如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/g1.jpg"></center>
+
+<center>G1垃圾收集器运行示意图</center>
+
+<h3 id="3-4-内存分配与回收策略"><a href="#3-4-内存分配与回收策略" class="headerlink" title="3.4 内存分配与回收策略"></a>3.4 内存分配与回收策略</h3><p>上节介绍了垃圾收集的相关知识，本节将介绍对象的内存分配策略。对象的内存分配，从大方向上讲，对象主要是分配在堆区的新生代的Eden区上；如果启动了本地线程缓冲，将按线程优先在TLAB上分配；在少数情况下会分配在老年代中。而这是基本的分配规则，而内存分配细节取决于垃圾收集器的组合，以及虚拟机中与内存相关的参数设置。</p>
+<p>下文将介绍最普遍的内存分配规则，<strong>在使用Serial/Serial Old收集器组合的情况下的内存分配与回收策略（ParNew/PaSerial Old收集器组合下的策略基本一致）</strong>。在这种组合下，依然存在新生代和老年代的概念，一般称新生代GC为<strong>Minor GC</strong>，老年代GC为<strong>Major GC或者Full GC</strong>。下文将介绍最普遍的内存分配规则。</p>
+<p><strong>1）对象优先分配在Eden区</strong></p>
+<p>大多数情况下，虚拟机会在新生代 Eden 上为对象分配内存，当 Eden 空间不够时，发起 Minor GC。</p>
+<p><strong>2）大对象直接进入老年代</strong></p>
+<p>当大对象（例如很长的字符串或数组）需要分配内存时，虚拟机判断是否申请的空间是否大于PretenureSizeThreshold参数，大于该参数则直接分配到老年代。</p>
+<p><strong>3）长期存活的对象进入老年代</strong></p>
+<p>当一些对象经历过几次Minor GC依然存活时，虚拟机判断对象的年龄是否大于MaxtenuringThreshold参数，大于该参数则将对象移到老年代中。</p>
+<p><strong>4）动态对象年龄判定</strong></p>
+<p>虚拟机并不是永远要求对象在达到年龄后才转入老年代，如果Survivor空间中的年龄相同的对象所占的内存总和大于Survivor空间的一半，那么大于或等于该年龄的对象将直接进入老年代。</p>
+<p><strong>5）空间分配担保</strong></p>
+<p>之前都是在Minor GC时，判定对象是否可以进入老年代的规则。而在进行Minor GC之前，虚拟机首先需要判断老年代的最大可用连续空间是否大于新生代所有存活对象的总空间。如果条件成立，则Minor GC 可以确定是安全的，可以执行Minor GC。</p>
+<p>如果不成立，虚拟机接着会查看HandlePromotionFailure设置值是否允许担保失败。如果不允许，将进行一次Full GC操作。</p>
+<p>如果允许，虚拟机将会继续判断老年代的最大可用连续空间是否大于历次晋升到老年代中对象的平均大小。如果小于，则担保失败，进行一次Full GC操作。如果大于，则尝试进行一次Minor GC。当然也有可能在执行Minor GC操作时，发现晋升到老年代对象的空间大于老年代的最大可用连续空间，则进行一次Full GC操作。</p>
+<p>整个空间分配担保流程如下图所示：</p>
+<center><img src="http://zhoujianbo.gitee.io/notes/pics/JVM/handlePromotion.png"></center>
+
+<center>空间分配担保流程图</center>
+
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="<https://cyc2018.github.io/CS-Notes/#/notes/Java%20%E8%99%9A%E6%8B%9F%E6%9C%BA">Java虚拟机-cyc2018</a></p>
+<p>深入理解Java虚拟机</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/09/15/JVM笔记（理论篇）/" data-id="ck0kz0nof0003kst01afmpusc" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/09/15/SSH基本原理/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          SSH 基本原理
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/09/15/Git入门笔记/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Git 入门笔记</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">September 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/09/15/SSH基本原理/">SSH 基本原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/JVM笔记（理论篇）/">JVM 笔记（理论篇）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/Git入门笔记/">Git 入门笔记</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/数据结构与算法（剑指offer）/">数据结构与算法（剑指offer）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Zhou Jianbo<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="utf-8">
+  
+
+  
+  <title>SSH 基本原理 | DevelopInfo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="SSH 基本原理SSH 是什么？SSH 为 Secure Shell 的缩写，由 IETF 的网络小组（Network Working Group）所制定。SSH是一种用于安全访问远程服务器的网络协议。它将客户端与服务端之间的消息通过加密保护起来，这样就无法被窃取或篡改了。那么它安全性是如何实现的呢？ 本文我们将主要讨论SSH服务是如何工作的以及SSH协议的组成，以理解SSH的基本原理。 SSH是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSH 基本原理">
+<meta property="og:url" content="http://yoursite.com/2019/09/15/SSH基本原理/index.html">
+<meta property="og:site_name" content="DevelopInfo">
+<meta property="og:description" content="SSH 基本原理SSH 是什么？SSH 为 Secure Shell 的缩写，由 IETF 的网络小组（Network Working Group）所制定。SSH是一种用于安全访问远程服务器的网络协议。它将客户端与服务端之间的消息通过加密保护起来，这样就无法被窃取或篡改了。那么它安全性是如何实现的呢？ 本文我们将主要讨论SSH服务是如何工作的以及SSH协议的组成，以理解SSH的基本原理。 SSH是">
+<meta property="og:locale" content="zh">
+<meta property="og:image" content="http://zhoujianbo.gitee.io/notes/pics/SSH/how-does-ssh-protocol-work-920x272-SWKuhzNV.png">
+<meta property="og:updated_time" content="2019-09-15T12:50:33.120Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SSH 基本原理">
+<meta name="twitter:description" content="SSH 基本原理SSH 是什么？SSH 为 Secure Shell 的缩写，由 IETF 的网络小组（Network Working Group）所制定。SSH是一种用于安全访问远程服务器的网络协议。它将客户端与服务端之间的消息通过加密保护起来，这样就无法被窃取或篡改了。那么它安全性是如何实现的呢？ 本文我们将主要讨论SSH服务是如何工作的以及SSH协议的组成，以理解SSH的基本原理。 SSH是">
+<meta name="twitter:image" content="http://zhoujianbo.gitee.io/notes/pics/SSH/how-does-ssh-protocol-work-920x272-SWKuhzNV.png">
+  
+    <link rel="alternate" href="/atom.xml" title="DevelopInfo" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.png">
+  
+  
+    <link href="//fonts.googleapis.com/css?family=Source+Code+Pro" rel="stylesheet" type="text/css">
+  
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+</html>
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">DevelopInfo</a>
+      </h1>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/atom.xml" title="RSS Feed"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="Search"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="http://yoursite.com"></form>
+      </div>
+    </div>
+  </div>
+</header>
+      <div class="outer">
+        <section id="main"><article id="post-SSH基本原理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/09/15/SSH基本原理/" class="article-date">
+  <time datetime="2019-09-15T12:43:26.899Z" itemprop="datePublished">2019-09-15</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      SSH 基本原理
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="SSH-基本原理"><a href="#SSH-基本原理" class="headerlink" title="SSH 基本原理"></a>SSH 基本原理</h1><h2 id="SSH-是什么？"><a href="#SSH-是什么？" class="headerlink" title="SSH 是什么？"></a>SSH 是什么？</h2><p>SSH 为 <a href="https://baike.baidu.com/item/Secure%20Shell" target="_blank" rel="noopener">Secure Shell</a> 的缩写，由 IETF 的网络小组（Network Working Group）所制定。SSH是一种用于安全访问远程服务器的网络协议。它将客户端与服务端之间的消息通过加密保护起来，这样就无法被窃取或篡改了。那么它安全性是如何实现的呢？</p>
+<p>本文我们将主要讨论SSH服务是如何工作的以及SSH协议的组成，以理解SSH的基本原理。</p>
+<h2 id="SSH是如何工作的？"><a href="#SSH是如何工作的？" class="headerlink" title="SSH是如何工作的？"></a>SSH是如何工作的？</h2><p>在理解本节将主要讨论SSH是如何工作的。SSH服务主要是基于Client-Server架构，工作过程主要包含<strong>会话建立</strong>和<strong>之后的数据通信</strong>。本节将主要介绍SSH服务的会话建立过程，数据通信过程主要是利用对称加密方式对数据进行加密传输。</p>
+<p>SSH服务<strong>会话(Session)的建立</strong>（不包括数据传输阶段）主要包含两个阶段。<strong>第一阶段</strong>，Client与Server之间需要协商会话加密相关的事务，包括协议版本号协商、密钥协商等；<strong>第二阶段</strong>，当加密会话建立之后，Server需要验证Client用户是否是合法用户。</p>
+<p>下图显示了一个简化后的会话建立过程。</p>
+<p><img src="http://zhoujianbo.gitee.io/notes/pics/SSH/how-does-ssh-protocol-work-920x272-SWKuhzNV.png" alt="a simplified setup flow of a secure shell connection"></p>
+<p><strong>首先</strong>，客户端发送连接请求给服务器，服务器返回它所支持的协议版本号，如果客户端支持其中一种协议版本，则连接继续进行。同时，服务器会发送它的public host key，客户端利用该公钥检查是不是自己想连接的服务器主机（如何检查？用户人眼检查，客户端会发送一段警告，用户自行判断是否是合法服务器发来的公钥）。</p>
+<p><strong>接着</strong>，双方需要协商出一个<strong>会话密钥（Session Key）</strong>。如何协商？利用一种叫Diffie-Hellman 的算法（这里不详述，可参考<a href="https://www.digitalocean.com/community/tutorials/understanding-the-ssh-encryption-and-connection-process" target="_blank" rel="noopener">Understanding the SSH Encryption and Connection Process</a>）。session key 有何用？服务器与客户端之后的所有通信数据都会利用 对称加密方式，利用 session key 进行加密和解密。</p>
+<p><strong>当加密会话建立之后</strong>，下面开始进行用户身份验证阶段。为什么要进行用户验证？<strong>个人理解</strong>，在会话建立之后，客户端完成对服务器的认证，而服务器并未认证客户端的访问权限，因此需要用户验证过程。最常用的两种验证方式为密码登录验证和公钥验证。</p>
+<p><strong>密码登录验证</strong>，客户端发送用户名和密码给服务器，服务器对其进行认证。其中，用户名与密码的传输会利用 session key 进行加密，该过程是对称加密。由于用户密码过简单会存在被破译的风险，密码验证方式并不推荐。</p>
+<p><strong>公钥验证</strong>，该验证过程会利用到非对称加密方式，验证过程如下：</p>
+<ol>
+<li>客户端发送自己的公钥给服务器，服务器在认证公钥表 authorized_keys 中寻找该公钥（因此，用户需要事先将公钥分享给服务器，例如：github上用户手动粘贴公钥给github服务器）。如果公钥不存在，则认证失败；如果公钥存在，服务器会形成一个随机数并且利用该公钥进行加密，形成一段加密信息。</li>
+<li>服务器将加密信息发送给客户端，客户端利用私钥进行解密，解密出服务器生成的随机数。客户端将解密出的随机数即利用 session key 进行加密，然后计算加密后数的MD5值。</li>
+<li>客户端将生成的MD5值发送给服务器，服务器会将之前生成的随机数利用 session key 进行加密，并计算加密后数的MD5值。然后将客户端发送来的值与计算出的值进行比对，如果两个值匹配，则验证成功。</li>
+</ol>
+<p>可以看出，公钥验证方式服务器可以利用客户端公钥验证客户端的合法性。</p>
+<p><strong>当用户验证阶段结束之后</strong>，服务器和客户端就可以利用对称加密的方式进行数据通信，对称加密的密钥为 session key。会话结束的时候，session key 会被销毁，下一次连接又会生成一个全新的 session key。</p>
+<h2 id="SSH-的组成是什么？"><a href="#SSH-的组成是什么？" class="headerlink" title="SSH 的组成是什么？"></a>SSH 的组成是什么？</h2><p>本节主要参考<a href="https://tools.ietf.org/html/rfc4251#page-17" target="_blank" rel="noopener">rfc4251</a>文件，同时加入个人理解进行阐述，如有不正确的理解，希望读者指出。</p>
+<p>SSH协议主要包含三层协议传输协议（Transport Protocol）、认证协议（Authentication Protocol）以及 连接协议（Connection Protocol）。</p>
+<p><strong>Transport Protocol</strong></p>
+<p>传输协议主要作用是在不安全的网络中提供一个受信任的加密（confidential）通道。该层协议需要完成服务器主机认证(server host authentication)，key 交换(key exchange)，加密(encryption)以及完整性保护(integrity protection)；同时，该层协议会产生一个特有的会话标识(session id)以提供给上层协议调用。</p>
+<p>传输协议的存在，个人理解，主要是需要解决在建立安全通道的过程中的许多安全漏洞，以初始化一个安全的会话连接。其中，比较重要的安全问题–中间人攻击问题，本节将主要讨论SSH如何预防中间人攻击(man-in-the- middle attacks)。</p>
+<p>三种中间人攻击的情况：</p>
+<p>（1）第一种情况发生在Client与Server建立会话之前，中间人伪装为合法的Server，发送自己的公钥(public key)给Client；同时，中间人伪装为Client，发送初始化会话(session)请求。</p>
+<p>对于第一种情况，SSH如何应对呢？如果Server（不知是中间人还是合法服务器）发送的公钥在会话初始化之前就已经存储在Client中，则SSH认为该公钥为合法Server的公钥；如果该公钥没有事先存储在Client中，则SSH会发送一段警告，让用户自行决定是否接受该公钥，并继续会话(session)操作。</p>
+<p>（2）（个人理解）第二种情况与第一种情况相似，中间人可以模仿合法Server发送自己的公钥给Client，根据第一种情况的解决方案，当公钥是第一次被Client接收到时，Client需要用户自行判别公钥的可信度，而这样是不够安全的。</p>
+<p>对于第二种情况，SSH协议是建议（可以有不同的实现）可以利用一个可信赖的中间认证机构(Certification Authority, CA)来认证Server公钥，Client可以向认证机构提交认证申请；同时，也可以在Client中分配一个认证数据数据库，来认证公钥是否是合法Server发送的。这样以实现Server公钥的安全分发。</p>
+<p>（3）第三种情况发生在Client与Server建立会话之后，中间人可以在数据传输过程中操纵数据包。</p>
+<p>对于第三种情况，如果MAC(Message Authentication Codes)算法是安全的，这种情况的攻击是不可能的。因此，SSH协议是建议利用现存安全的MAC算法。</p>
+<p>当然，传输协议还有许多其他标准规定，这里不详细介绍。</p>
+<p><strong>Authentication Protocol</strong></p>
+<p>认证协议主要作用是提供一组机制来认证客户端用户是否可以连接服务器。<strong>个人理解</strong>，在传输协议(Transport Protocol)之后，Client已经认证完Server主机，并且建立起一个安全的会话，但Server并没有认证Client的访问权限，这就需要认证协议来规定Server认证Client的过程。</p>
+<p>用户认证的实现有很多，不过目前两种主流方式为：密码登录验证和公钥验证。</p>
+<p><strong>Connection Protocol</strong></p>
+<p>连接协议主要作用是指定一种安全机制在confidential和authenticated传输过程中复用多个数据流/通道。如何进行多路复用的，这里讲不进行阐述。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>本文主要介绍SSH服务的工作流程，并初探SSH协议的组成。个人总结，SSH服务中有两个重要过程，一个是会话协商过程，另一个是用户认证过程，这两个过程便是SSH服务会话建立的主要过程，之后的数据传输过程主要是利用 session key 进行对称加密。SSH协议的组成是为了更好的理解SSH服务的工作过程，协议的制定需要考虑很多因素，本文主要是简单讨论了 Transport Protocol 中考虑的中间人攻击问题，个人认为这就是需要进行服务器认证的原因；Authentication Protocol 中主要是考虑用户验证问题；Connection Protocol 中的标准，个人很少会运用到，本文便没再讨论。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://tools.ietf.org/html/rfc4251#page-17" target="_blank" rel="noopener">rfc4251</a></p>
+<p><a href="https://www.digitalocean.com/community/tutorials/understanding-the-ssh-encryption-and-connection-process" target="_blank" rel="noopener">Understanding the SSH Encryption and Connection Process</a></p>
+<p><a href="http://erik-2-blog.logdown.com/posts/74081-ssh-principle" target="_blank" rel="noopener">SSH是如何防御重放攻击的？</a></p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://yoursite.com/2019/09/15/SSH基本原理/" data-id="ck0kz0nns0001kst0x9dcpgsf" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/09/15/JVM笔记（理论篇）/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">JVM 笔记（理论篇）</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+
+  
+    
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/09/">September 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2019/09/15/SSH基本原理/">SSH 基本原理</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/JVM笔记（理论篇）/">JVM 笔记（理论篇）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/Git入门笔记/">Git 入门笔记</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/数据结构与算法（剑指offer）/">数据结构与算法（剑指offer）</a>
+          </li>
+        
+          <li>
+            <a href="/2019/09/15/hello-world/">Hello World</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      &copy; 2019 Zhou Jianbo<br>
+      Powered by <a href="http://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+
+
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css">
+  <script src="/fancybox/jquery.fancybox.pack.js"></script>
+
+
+<script src="/js/script.js"></script>
+
+
+
+  </div>
+</body>
+</html>

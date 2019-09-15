@@ -1,4 +1,4 @@
-该项目是本人的个人博客项目，主要是基于 Hexo 博客生成工具进行生成。
+该项目是本人的个人博客([https://developinfo.github.io](https://developinfo.github.io/))项目，主要是基于 Hexo 博客生成工具进行生成。
 
 基本的操作流程是利用 Hexo 工具生成博客网站的静态文件，然后将静态文件同步到 Github 上，下面主要介绍一下 Hexo 工具生成静态文件的过程：
 
